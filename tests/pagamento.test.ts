@@ -1,5 +1,5 @@
-import { MembroService } from './membroService';
-import { PagamentoService } from './pagamentoService';
+import { MembroService } from '../src/services/membroService';
+import { PagamentoService } from '../src/services/pagamentoService';
 
 describe('PagamentoService', () => {
   let membroService: MembroService;
@@ -465,3 +465,4 @@ describe('PagamentoService', () => {
     });
   });
 });
+
