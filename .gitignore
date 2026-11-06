@@ -1,3 +1,6 @@
 node_modules/
 dist/
 coverage/
+
+# Documentos e diretrizes acadêmicas
+*.pdf
