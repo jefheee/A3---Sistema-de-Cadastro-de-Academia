@@ -115,6 +115,26 @@ describe('MembroService', () => {
       }).toThrow('CPF inválido: deve conter 11 dígitos');
     });
 
+    it('deve bloquear cadastro de membro com ID duplicado informado manualmente', () => {
+      // Arrange
+      const membroOriginal = {
+        id: '10',
+        nome: 'Carlos Silva',
+        cpf: '123.456.789-01',
+      };
+      const membroComMesmoId = {
+        id: '10',
+        nome: 'Outro Carlos',
+        cpf: '987.654.321-09',
+      };
+      membroService.cadastrarMembro(membroOriginal);
+
+      // Act & Assert
+      expect(() => {
+        membroService.cadastrarMembro(membroComMesmoId);
+      }).toThrow('Ja existe um membro cadastrado com este ID');
+    });
+
     it('deve bloquear cadastro de membro com CPF duplicado', () => {
       // Arrange
       const membroOriginal = {

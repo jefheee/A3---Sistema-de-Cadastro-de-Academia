@@ -5,6 +5,10 @@ export class MembroService {
   private nextId: number = 1;
 
   cadastrarMembro(dados: Partial<Membro>): Membro {
+    if (dados?.id && this.consultarPorId(dados.id)) {
+      throw new Error("Ja existe um membro cadastrado com este ID");
+    }
+
     const nome = dados?.nome;
     if (!nome || typeof nome !== 'string' || nome.trim().length < 3) {
       throw new Error("Nome do membro inválido");
