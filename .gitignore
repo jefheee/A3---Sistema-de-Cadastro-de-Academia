@@ -4,4 +4,7 @@ coverage/
 
 # Documentos e diretrizes acadêmicas
 *.pdf
-Guia Pratico*.md
+Guia*.md
+15.*.md
+16.*.md
+docs_disciplina/
