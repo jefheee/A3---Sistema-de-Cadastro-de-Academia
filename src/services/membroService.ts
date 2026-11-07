@@ -26,8 +26,16 @@ export class MembroService {
       throw new Error("Já existe um membro cadastrado com este CPF");
     }
 
+    let idFinal = dados.id;
+    if (!idFinal) {
+      while (this.consultarPorId(String(this.nextId))) {
+        this.nextId++;
+      }
+      idFinal = String(this.nextId++);
+    }
+
     const novoMembro: Membro = {
-      id: dados.id || String(this.nextId++),
+      id: idFinal,
       nome,
       cpf,
       telefone: dados.telefone || '',

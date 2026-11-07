@@ -135,6 +135,29 @@ describe('MembroService', () => {
       }).toThrow('Ja existe um membro cadastrado com este ID');
     });
 
+    it('deve gerar ID automatico sem colisao quando ja existir membro com ID manual', () => {
+      // Arrange
+      const dadosPrimeiro = {
+        id: '1',
+        nome: 'Pessoa Um',
+        cpf: '12345678901',
+      };
+      const dadosSegundo = {
+        nome: 'Pessoa Dois',
+        cpf: '10987654321',
+      };
+
+      // Act
+      const primeiro = membroService.cadastrarMembro(dadosPrimeiro);
+      const segundo = membroService.cadastrarMembro(dadosSegundo);
+
+      // Assert
+      expect(primeiro.id).not.toBe(segundo.id);
+      expect(segundo.id).toBe('2');
+      expect(membroService.consultarPorId(primeiro.id)).toEqual(primeiro);
+      expect(membroService.consultarPorId(segundo.id)).toEqual(segundo);
+    });
+
     it('deve bloquear cadastro de membro com CPF duplicado', () => {
       // Arrange
       const membroOriginal = {
