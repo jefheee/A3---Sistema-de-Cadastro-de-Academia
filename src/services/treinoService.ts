@@ -8,6 +8,10 @@ export class TreinoService {
   constructor(private membroService: MembroService) {}
 
   cadastrarTreino(dados: Partial<Treino>): Treino {
+    if (dados?.id && this.consultarTreinoPorId(dados.id)) {
+      throw new Error("Ja existe um treino cadastrado com este ID");
+    }
+
     // a) Verifica se o idMembro existe no membroService.consultarPorId(idMembro)
     if (!dados?.idMembro) {
       throw new Error("Regra violada: Membro não encontrado para vincular o treino");
@@ -44,8 +48,16 @@ export class TreinoService {
       throw new Error("Descrição do treino deve ser preenchida");
     }
 
+    let idFinal = dados.id;
+    if (!idFinal) {
+      while (this.consultarTreinoPorId(String(this.nextId))) {
+        this.nextId++;
+      }
+      idFinal = String(this.nextId++);
+    }
+
     const novoTreino: Treino = {
-      id: dados.id || String(this.nextId++),
+      id: idFinal,
       idMembro: dados.idMembro,
       tipo: dados.tipo.trim(),
       descricao: dados.descricao.trim(),
@@ -55,6 +67,10 @@ export class TreinoService {
 
     this.treinos.push(novoTreino);
     return novoTreino;
+  }
+
+  consultarTreinoPorId(id: string): Treino | undefined {
+    return this.treinos.find(treino => treino.id === id);
   }
 
   listarTreinosPorMembro(idMembro: string): Treino[] {

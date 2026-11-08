@@ -76,6 +76,45 @@ describe('TreinoService', () => {
       expect(lista).toContainEqual(treino1);
       expect(lista).toContainEqual(treino2);
     });
+
+    it('deve gerar ID automatico sem colisao quando ja existir treino com ID manual e listar com integridade', () => {
+      // Arrange
+      const membro = membroService.cadastrarMembro({
+        nome: 'Lucas Silva',
+        cpf: '123.456.789-01',
+        ativo: true,
+      });
+
+      // Act: cadastra treino com id: "1" e outro sem ID
+      const treinoManual = treinoService.cadastrarTreino({
+        id: '1',
+        idMembro: membro.id,
+        tipo: 'Musculação',
+        descricao: 'Treino com ID Manual',
+        duracaoMinutos: 45,
+      });
+
+      const treinoGerado = treinoService.cadastrarTreino({
+        idMembro: membro.id,
+        tipo: 'Cardio',
+        descricao: 'Treino com ID Gerado',
+        duracaoMinutos: 30,
+      });
+
+      const treinosDoMembro = treinoService.listarTreinosPorMembro(membro.id);
+
+      // Assert
+      expect(treinoManual.id).toBe('1');
+      expect(treinoGerado.id).toBeDefined();
+      expect(treinoManual.id).not.toBe(treinoGerado.id);
+
+      expect(treinosDoMembro).toHaveLength(2);
+      expect(treinosDoMembro).toContainEqual(treinoManual);
+      expect(treinosDoMembro).toContainEqual(treinoGerado);
+
+      const ids = treinosDoMembro.map(t => t.id);
+      expect(new Set(ids).size).toBe(2);
+    });
   });
 
   describe('Cenários Inválidos - Regras de Vínculo com Membro', () => {
@@ -121,6 +160,38 @@ describe('TreinoService', () => {
   });
 
   describe('Cenários Inválidos - Limites de Fronteira e Validações', () => {
+    it('deve lançar erro ao cadastrar treino com ID manual já existente', () => {
+      // Arrange
+      const membro = membroService.cadastrarMembro({
+        nome: 'Lucas Silva',
+        cpf: '123.456.789-01',
+        ativo: true,
+      });
+
+      const treinoOriginal = {
+        id: 'T1',
+        idMembro: membro.id,
+        tipo: 'Musculação',
+        descricao: 'Treino A',
+        duracaoMinutos: 60,
+      };
+
+      const treinoComMesmoId = {
+        id: 'T1',
+        idMembro: membro.id,
+        tipo: 'Cardio',
+        descricao: 'Treino B',
+        duracaoMinutos: 45,
+      };
+
+      treinoService.cadastrarTreino(treinoOriginal);
+
+      // Act & Assert
+      expect(() => {
+        treinoService.cadastrarTreino(treinoComMesmoId);
+      }).toThrow('Ja existe um treino cadastrado com este ID');
+    });
+
     it('deve lançar erro quando a duração for menor que 15 minutos (ex: 14 min)', () => {
       // Arrange
       const membro = membroService.cadastrarMembro({
