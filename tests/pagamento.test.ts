@@ -65,7 +65,7 @@ describe('PagamentoService', () => {
     });
   });
 
-  describe('3. Validação de Valor Zero, Negativo ou Inválido', () => {
+  describe('3. Validação de Valor Zero, Negativo ou Inválido (Issue #3)', () => {
     let membroId: string;
 
     beforeEach(() => {
@@ -83,7 +83,7 @@ describe('PagamentoService', () => {
           idMembro: membroId,
           valor: 0,
         });
-      }).toThrow('Valor do pagamento deve ser maior que zero');
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
     });
 
     it('deve lançar erro ao tentar registrar pagamento com valor negativo', () => {
@@ -93,7 +93,7 @@ describe('PagamentoService', () => {
           idMembro: membroId,
           valor: -50.0,
         });
-      }).toThrow('Valor do pagamento deve ser maior que zero');
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
     });
 
     it('deve lançar erro ao tentar registrar pagamento sem valor ou com valor inválido (NaN)', () => {
@@ -103,13 +103,167 @@ describe('PagamentoService', () => {
           idMembro: membroId,
           valor: NaN,
         });
-      }).toThrow('Valor do pagamento deve ser maior que zero');
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
 
       expect(() => {
         pagamentoService.registrarPagamento({
           idMembro: membroId,
         });
-      }).toThrow('Valor do pagamento deve ser maior que zero');
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+    });
+
+    it('deve rejeitar pagamento com valor Infinity (Issue #3 - Requisito 1)', () => {
+      // Arrange
+      const dadosPagamento = {
+        idMembro: membroId,
+        valor: Infinity,
+      };
+
+      // Act & Assert
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosPagamento);
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+    });
+
+    it('deve rejeitar pagamento com valor -Infinity (Issue #3 - Requisito 2)', () => {
+      // Arrange
+      const dadosPagamento = {
+        idMembro: membroId,
+        valor: -Infinity,
+      };
+
+      // Act & Assert
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosPagamento);
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+    });
+
+    it('deve rejeitar pagamento com valor NaN explicitamente (Issue #3 - Requisito 3)', () => {
+      // Arrange
+      const dadosPagamento = {
+        idMembro: membroId,
+        valor: NaN,
+      };
+
+      // Act & Assert
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosPagamento);
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+    });
+
+    it('deve rejeitar pagamento com valor zero e valores negativos (Issue #3 - Requisito 4)', () => {
+      // Arrange
+      const dadosZero = {
+        idMembro: membroId,
+        valor: 0,
+      };
+      const dadosNegativo = {
+        idMembro: membroId,
+        valor: -150.50,
+      };
+
+      // Act & Assert
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosZero);
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosNegativo);
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+    });
+
+    it('deve garantir que pagamentos inválidos não sejam adicionados à lista (Issue #3 - Requisito 5)', () => {
+      // Arrange
+      const valoresInvalidos = [0, -50, NaN, Infinity, -Infinity];
+
+      // Act
+      for (const valor of valoresInvalidos) {
+        expect(() => {
+          pagamentoService.registrarPagamento({
+            idMembro: membroId,
+            valor,
+          });
+        }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+      }
+
+      // Assert
+      const pagamentosDoMembro = pagamentoService.listarPagamentosPorMembro(membroId);
+      expect(pagamentosDoMembro).toHaveLength(0);
+
+      const todosPagamentos = pagamentoService.listarPagamentos();
+      expect(todosPagamentos).toHaveLength(0);
+    });
+
+    it('deve garantir que tentativas inválidas não alterem a adimplência do membro (Issue #3 - Requisito 6)', () => {
+      // Arrange: membro inicialmente sem pagamentos (inadimplente)
+      expect(pagamentoService.verificarAdimplencia(membroId)).toBe(false);
+
+      // Act: tentativa de registrar pagamento inválido para membro inadimplente
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          idMembro: membroId,
+          valor: Infinity,
+          dataPagamento: '2026-11-09',
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      // Assert: adimplência permanece inalterada (false)
+      expect(pagamentoService.verificarAdimplencia(membroId)).toBe(false);
+
+      // Arrange: registra um pagamento válido pago para torná-lo adimplente
+      pagamentoService.registrarPagamento({
+        idMembro: membroId,
+        valor: 100.0,
+        dataPagamento: '2026-11-09',
+      });
+      expect(pagamentoService.verificarAdimplencia(membroId)).toBe(true);
+
+      // Act: tentativa de registrar pagamento inválido para membro adimplente
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          idMembro: membroId,
+          valor: -50.0,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      // Assert: adimplência permanece inalterada (true)
+      expect(pagamentoService.verificarAdimplencia(membroId)).toBe(true);
+    });
+
+    it('deve aceitar valores positivos e finitos (Issue #3 - Requisito 7)', () => {
+      // Arrange
+      const dadosInteiro = {
+        idMembro: membroId,
+        valor: 150,
+        dataPagamento: '2026-11-09',
+      };
+      const dadosDecimal = {
+        idMembro: membroId,
+        valor: 99.90,
+        dataPagamento: '2026-11-09',
+      };
+      const dadosFracionario = {
+        idMembro: membroId,
+        valor: 0.01,
+        dataPagamento: '2026-11-09',
+      };
+
+      // Act
+      const pag1 = pagamentoService.registrarPagamento(dadosInteiro);
+      const pag2 = pagamentoService.registrarPagamento(dadosDecimal);
+      const pag3 = pagamentoService.registrarPagamento(dadosFracionario);
+
+      // Assert
+      expect(pag1.valor).toBe(150);
+      expect(pag2.valor).toBe(99.90);
+      expect(pag3.valor).toBe(0.01);
+      expect(Number.isFinite(pag1.valor)).toBe(true);
+      expect(Number.isFinite(pag2.valor)).toBe(true);
+      expect(Number.isFinite(pag3.valor)).toBe(true);
+      expect(pag1.status).toBe('PAGO');
+      expect(pag2.status).toBe('PAGO');
+      expect(pag3.status).toBe('PAGO');
+      expect(pagamentoService.listarPagamentosPorMembro(membroId)).toHaveLength(3);
     });
   });
 

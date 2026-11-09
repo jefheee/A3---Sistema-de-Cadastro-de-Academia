@@ -14,16 +14,15 @@ export class PagamentoService {
       throw new Error("Membro não encontrado para registrar pagamento");
     }
 
-    // Regra 2: Verifica se valor é maior que zero (valor > 0).
-    // Se for zero ou negativo, lança Error("Valor do pagamento deve ser maior que zero").
+    // Regra 2: Verifica se valor é um número positivo e finito.
     if (
       dados.valor === undefined ||
       dados.valor === null ||
       typeof dados.valor !== 'number' ||
-      isNaN(dados.valor) ||
+      !Number.isFinite(dados.valor) ||
       dados.valor <= 0
     ) {
-      throw new Error("Valor do pagamento deve ser maior que zero");
+      throw new Error("Valor do pagamento deve ser um numero positivo e finito");
     }
 
     // Regra 3: Verifica se dataPagamento foi informada. Salva e retorna o pagamento com status 'PAGO' ou 'PENDENTE'.
