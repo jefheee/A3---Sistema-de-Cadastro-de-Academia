@@ -598,6 +598,180 @@ describe('PagamentoService', () => {
     });
   });
 
+  describe('11. Tratamento de IDs e Prevenção de Duplicidade (Issue #2)', () => {
+    let membroId: string;
+
+    beforeEach(() => {
+      const membro = membroService.cadastrarMembro({
+        nome: 'Gabriel Barbosa',
+        cpf: '123.987.654-32',
+      });
+      membroId = membro.id;
+    });
+
+    it('deve rejeitar dois pagamentos com o mesmo ID "PG-1"', () => {
+      // Arrange
+      const dadosPagamento1 = {
+        id: 'PG-1',
+        idMembro: membroId,
+        valor: 100.0,
+        dataPagamento: '2026-11-09',
+      };
+      const dadosPagamento2 = {
+        id: 'PG-1',
+        idMembro: membroId,
+        valor: 150.0,
+      };
+
+      // Act
+      const pag1 = pagamentoService.registrarPagamento(dadosPagamento1);
+
+      // Assert
+      expect(pag1.id).toBe('PG-1');
+      expect(() => {
+        pagamentoService.registrarPagamento(dadosPagamento2);
+      }).toThrow('Ja existe um pagamento cadastrado com este ID');
+    });
+
+    it('deve cadastrar um pagamento com ID "1" e depois outro sem ID, verificando que o segundo recebe "2"', () => {
+      // Arrange & Act
+      const pag1 = pagamentoService.registrarPagamento({
+        id: '1',
+        idMembro: membroId,
+        valor: 100.0,
+        dataPagamento: '2026-11-09',
+      });
+
+      const pag2 = pagamentoService.registrarPagamento({
+        idMembro: membroId,
+        valor: 120.0,
+      });
+
+      // Assert
+      expect(pag1.id).toBe('1');
+      expect(pag2.id).toBe('2');
+    });
+
+    it('deve confirmar que pagamentos cadastrados com ID manual e automático podem ser consultados individualmente', () => {
+      // Arrange
+      const pagManual = pagamentoService.registrarPagamento({
+        id: '1',
+        idMembro: membroId,
+        valor: 100.0,
+        dataPagamento: '2026-11-09',
+      });
+
+      const pagAutomatico = pagamentoService.registrarPagamento({
+        idMembro: membroId,
+        valor: 120.0,
+      });
+
+      // Act: consulta individual utilizando tanto consultarPagamentoPorId quanto consultarPorId
+      const consultadoManualPorPagamentoId = pagamentoService.consultarPagamentoPorId('1');
+      const consultadoManualPorId = pagamentoService.consultarPorId('1');
+
+      const consultadoAutoPorPagamentoId = pagamentoService.consultarPagamentoPorId('2');
+      const consultadoAutoPorId = pagamentoService.consultarPorId('2');
+
+      // Assert
+      expect(consultadoManualPorPagamentoId).toEqual(pagManual);
+      expect(consultadoManualPorId).toEqual(pagManual);
+
+      expect(consultadoAutoPorPagamentoId).toEqual(pagAutomatico);
+      expect(consultadoAutoPorId).toEqual(pagAutomatico);
+    });
+
+    it('deve garantir que uma tentativa de duplicação não altere a lista de pagamentos', () => {
+      // Arrange
+      const pagOriginal = pagamentoService.registrarPagamento({
+        id: 'PG-1',
+        idMembro: membroId,
+        valor: 200.0,
+        dataPagamento: '2026-11-09',
+      });
+
+      const listaAntes = pagamentoService.listarPagamentos();
+      expect(listaAntes).toHaveLength(1);
+
+      // Act
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-1',
+          idMembro: membroId,
+          valor: 300.0,
+        });
+      }).toThrow('Ja existe um pagamento cadastrado com este ID');
+
+      // Assert
+      const listaDepois = pagamentoService.listarPagamentos();
+      expect(listaDepois).toHaveLength(1);
+      expect(listaDepois[0]).toEqual(pagOriginal);
+
+      const pagamentosMembro = pagamentoService.listarPagamentosPorMembro(membroId);
+      expect(pagamentosMembro).toHaveLength(1);
+      expect(pagamentosMembro[0]).toEqual(pagOriginal);
+    });
+
+    it('deve garantir que a validação financeira da Issue #3 continue funcionando', () => {
+      // Arrange & Act & Assert
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-TEST-1',
+          idMembro: membroId,
+          valor: Infinity,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-TEST-2',
+          idMembro: membroId,
+          valor: -Infinity,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-TEST-3',
+          idMembro: membroId,
+          valor: NaN,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-TEST-4',
+          idMembro: membroId,
+          valor: 0,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      expect(() => {
+        pagamentoService.registrarPagamento({
+          id: 'PG-TEST-5',
+          idMembro: membroId,
+          valor: -50.0,
+        });
+      }).toThrow('Valor do pagamento deve ser um numero positivo e finito');
+
+      // Assert: nenhum ID com valor financeiro inválido foi persistido
+      expect(pagamentoService.consultarPagamentoPorId('PG-TEST-1')).toBeUndefined();
+      expect(pagamentoService.consultarPagamentoPorId('PG-TEST-2')).toBeUndefined();
+      expect(pagamentoService.consultarPagamentoPorId('PG-TEST-3')).toBeUndefined();
+      expect(pagamentoService.consultarPagamentoPorId('PG-TEST-4')).toBeUndefined();
+      expect(pagamentoService.consultarPagamentoPorId('PG-TEST-5')).toBeUndefined();
+      expect(pagamentoService.listarPagamentos()).toHaveLength(0);
+    });
+
+    it('deve retornar undefined ao consultar pagamento por ID inexistente via consultarPagamentoPorId', () => {
+      // Act
+      const resultado = pagamentoService.consultarPagamentoPorId('id-nao-existente');
+
+      // Assert
+      expect(resultado).toBeUndefined();
+    });
+  });
+
   describe('Métodos Auxiliares de Consulta', () => {
     it('deve listar todos os pagamentos cadastrados no sistema', () => {
       // Arrange
@@ -616,6 +790,27 @@ describe('PagamentoService', () => {
 
       // Assert
       expect(todos.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('deve permitir consultar pagamento tanto por consultarPagamentoPorId quanto por consultarPorId', () => {
+      // Arrange
+      const membro = membroService.cadastrarMembro({
+        nome: 'Ayrton Senna',
+        cpf: '888.777.666-55',
+      });
+      const pagamento = pagamentoService.registrarPagamento({
+        idMembro: membro.id,
+        valor: 150.0,
+        dataPagamento: '2026-01-01',
+      });
+
+      // Act
+      const porConsultarPagamentoPorId = pagamentoService.consultarPagamentoPorId(pagamento.id);
+      const porConsultarPorId = pagamentoService.consultarPorId(pagamento.id);
+
+      // Assert
+      expect(porConsultarPagamentoPorId).toEqual(pagamento);
+      expect(porConsultarPorId).toEqual(pagamento);
     });
   });
 });

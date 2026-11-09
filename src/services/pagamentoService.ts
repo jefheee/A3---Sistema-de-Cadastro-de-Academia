@@ -8,6 +8,10 @@ export class PagamentoService {
   constructor(private membroService: MembroService) {}
 
   registrarPagamento(dados: Partial<Pagamento>): Pagamento {
+    if (dados?.id && this.consultarPagamentoPorId(dados.id)) {
+      throw new Error("Ja existe um pagamento cadastrado com este ID");
+    }
+
     // Regra 1: Verifica se o idMembro existe no membroService.consultarPorId(idMembro).
     // Se não existir, lança Error("Membro não encontrado para registrar pagamento").
     if (!dados?.idMembro || !this.membroService.consultarPorId(dados.idMembro)) {
@@ -34,8 +38,16 @@ export class PagamentoService {
 
     const status: 'PAGO' | 'PENDENTE' = dados.status ?? (dataInformada ? 'PAGO' : 'PENDENTE');
 
+    let idFinal = dados.id;
+    if (!idFinal) {
+      while (this.consultarPagamentoPorId(String(this.nextId))) {
+        this.nextId++;
+      }
+      idFinal = String(this.nextId++);
+    }
+
     const novoPagamento: Pagamento = {
-      id: dados.id || String(this.nextId++),
+      id: idFinal,
       idMembro: dados.idMembro,
       valor: dados.valor,
       dataPagamento: dados.dataPagamento?.trim() || '',
@@ -44,6 +56,14 @@ export class PagamentoService {
 
     this.pagamentos.push(novoPagamento);
     return novoPagamento;
+  }
+
+  consultarPagamentoPorId(id: string): Pagamento | undefined {
+    return this.pagamentos.find(pagamento => pagamento.id === id);
+  }
+
+  consultarPorId(id: string): Pagamento | undefined {
+    return this.consultarPagamentoPorId(id);
   }
 
   listarPagamentosPorMembro(idMembro: string): Pagamento[] {
@@ -75,10 +95,6 @@ export class PagamentoService {
     const temPago = pagamentosMembro.some(pagamento => pagamento.status === 'PAGO');
 
     return !temPendente && temPago;
-  }
-
-  consultarPorId(id: string): Pagamento | undefined {
-    return this.pagamentos.find(pagamento => pagamento.id === id);
   }
 
   listarPagamentos(): Pagamento[] {
