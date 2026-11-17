@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Compilação, Testes e Cobertura
+    name: Compilação, Análise Estática e Quality Gate
     runs-on: ubuntu-latest
 
     steps:
@@ -24,8 +24,11 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Verificar compilação TypeScript
+      - name: Análise Estática - ESLint
+        run: npm run lint
+
+      - name: Análise Estática - Verificação de tipos TypeScript
         run: npx tsc --noEmit
 
-      - name: Executar testes com cobertura
+      - name: Executar testes com cobertura (Quality Gate)
         run: npm run test:coverage
