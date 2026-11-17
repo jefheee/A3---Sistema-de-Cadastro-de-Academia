@@ -31,8 +31,21 @@ export class AtividadeService {
       throw new Error("Tempo de execução deve ser entre 5 e 240 minutos");
     }
 
+    let finalId: string;
+    if (dados.id) {
+      if (this.consultarPorId(dados.id)) {
+        throw new Error("ID de atividade ja existente");
+      }
+      finalId = dados.id;
+    } else {
+      while (this.consultarPorId(String(this.nextId))) {
+        this.nextId++;
+      }
+      finalId = String(this.nextId++);
+    }
+
     const novaAtividade: HistoricoAtividade = {
-      id: dados.id || String(this.nextId++),
+      id: finalId,
       idMembro: dados.idMembro!,
       atividade: dados.atividade.trim(),
       data: dados.data || new Date().toISOString(),
@@ -41,6 +54,10 @@ export class AtividadeService {
 
     this.historicoAtividades.push(novaAtividade);
     return novaAtividade;
+  }
+
+  consultarPorId(id: string): HistoricoAtividade | undefined {
+    return this.historicoAtividades.find(item => item.id === id);
   }
 
   consultarHistoricoPorMembro(idMembro: string): HistoricoAtividade[] {

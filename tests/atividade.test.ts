@@ -151,4 +151,74 @@ describe('AtividadeService', () => {
       expect(atividadeService.consultarHistoricoPorMembro(membroAtivo.id)).toHaveLength(0);
     });
   });
+
+  describe('4. Regras de ID e Consulta por ID (Issue #5)', () => {
+    it('deve cadastrar a primeira atividade com id "1" informado manualmente e segunda atividade sem id gerando "2"', () => {
+      // Arrange
+      const atividadeManual = {
+        id: '1',
+        idMembro: membroAtivo.id,
+        atividade: 'Pilates',
+        tempoExecucaoMinutos: 50,
+      };
+      const atividadeAuto = {
+        idMembro: membroAtivo.id,
+        atividade: 'Yoga',
+        tempoExecucaoMinutos: 40,
+      };
+
+      // Act
+      const registrada1 = atividadeService.registrarAtividade(atividadeManual);
+      const registrada2 = atividadeService.registrarAtividade(atividadeAuto);
+
+      // Assert
+      expect(registrada1.id).toBe('1');
+      expect(registrada2.id).toBe('2');
+      expect(registrada1.id).not.toBe(registrada2.id);
+      expect(atividadeService.consultarHistoricoPorMembro(membroAtivo.id)).toHaveLength(2);
+    });
+
+    it('deve bloquear tentativa de cadastro com id manual duplicado lançando erro', () => {
+      // Arrange
+      const primeiraAtividade = {
+        id: '10',
+        idMembro: membroAtivo.id,
+        atividade: 'Spinning',
+        tempoExecucaoMinutos: 45,
+      };
+      atividadeService.registrarAtividade(primeiraAtividade);
+
+      const atividadeDuplicada = {
+        id: '10',
+        idMembro: membroAtivo.id,
+        atividade: 'Boxe',
+        tempoExecucaoMinutos: 60,
+      };
+
+      // Act & Assert
+      expect(() => atividadeService.registrarAtividade(atividadeDuplicada)).toThrow('ID de atividade ja existente');
+      expect(atividadeService.consultarHistoricoPorMembro(membroAtivo.id)).toHaveLength(1);
+    });
+
+    it('deve consultar por ID retornando o registro correto ou undefined quando inexistente', () => {
+      // Arrange
+      const atividade = atividadeService.registrarAtividade({
+        id: 'ativ-123',
+        idMembro: membroAtivo.id,
+        atividade: 'Funcional',
+        tempoExecucaoMinutos: 45,
+      });
+
+      // Act
+      const encontrada = atividadeService.consultarPorId('ativ-123');
+      const naoEncontrada = atividadeService.consultarPorId('inexistente');
+
+      // Assert
+      expect(encontrada).toBeDefined();
+      expect(encontrada?.id).toBe('ativ-123');
+      expect(encontrada?.atividade).toBe('Funcional');
+      expect(encontrada).toEqual(atividade);
+      expect(naoEncontrada).toBeUndefined();
+    });
+  });
 });
